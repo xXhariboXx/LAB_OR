@@ -25,51 +25,56 @@ void ParallelExercise::DoExercise()
 	int womenInBathroom = 0;
 	int totalMen = 0;
 	int totalWomen = 0;
-	std::vector<bool> IsManVectorQueue;
+	std::deque<bool> IsManVectorQueue;
 
 #pragma omp parallel for num_threads (ThreadsNumber) default(shared)
 	for (int i = 0; i < MenPopulation + WomenPopulation; i++)
 	{
 		printf("thread: %d. Male: %s\n", omp_get_thread_num(), (i < MenPopulation ? "Yes" : "No"));
 
+#pragma omp critical
+		IsManVectorQueue.push_back((i < MenPopulation) ? true : false);
+
 		//#pragma omp critical
 		{
 			if (i < MenPopulation)
 			{
 				//Check if man can go inside
-				if (womenInBathroom > 0)
+				while (womenInBathroom >= 0)
 				{
-					printf("thread: %d. Man can't go inside\n", omp_get_thread_num());
-					printf("thread: %d. Set_lock NoMenInside\n", omp_get_thread_num());
-					omp_set_lock(&NoWomenInside);
+					if (womenInBathroom == 0)
+					{
+						if (IsManVectorQueue.size() > 0 && IsManVectorQueue[0])
+						{
+#pragma omp critical
+							IsManVectorQueue.pop_front();
+							break;
+						}
+						else if (IsManVectorQueue.size() == 0)
+						{
+							break;
+						}
+					}
 				}
 
+
+				//Man go inside bathroom
 #pragma omp critical
 				{
-					//Man go inside bathroom
 					menInBathroom++;
 					totalMen++;
-					printf("Man in. Men inside: %d\n", menInBathroom);
+					printf("thread: %d. Man in. Men inside: %d. Women inside: %d\n", omp_get_thread_num(), menInBathroom, womenInBathroom);
 				}
 
 				//Rand time inside
 				int time = rand() % 100;
-				//Sleep(time);
+				Sleep(time);
 
 #pragma omp critical
 				{
 					//Men go outside
 					menInBathroom--;
-					printf("Man out. Time inside: %d. Men inside: %d\n", time, menInBathroom);
-				}
-
-				////If no men - woman can go inside
-				if (menInBathroom == 0)
-				{
-#pragma omp critical
-					{
-						omp_unset_lock(&NoMenInside);
-					}
+					printf("thread: %d. Man out. Time inside: %d. Men inside: %d\n", omp_get_thread_num(), time, menInBathroom);
 				}
 			}
 
@@ -77,19 +82,29 @@ void ParallelExercise::DoExercise()
 			{
 
 				//Check if woman can go inside
-				if (menInBathroom > 0)
+				while (menInBathroom >= 0)
 				{
-					printf("thread: %d. Woman can't go inside\n", omp_get_thread_num());
-					printf("thread: %d. Set_lock NoWomenInside\n", omp_get_thread_num());
-					omp_set_lock(&NoWomenInside);
+					if (menInBathroom == 0)
+					{
+						if (IsManVectorQueue.size() > 0 && !IsManVectorQueue[0])
+						{
+#pragma omp critical
+							IsManVectorQueue.pop_front();
+							break;
+						}
+						else if (IsManVectorQueue.size() == 0)
+						{
+							break;
+						}
+					}
 				}
 
 #pragma omp critical
 				{
 					//Man go inside bathroom
-					totalWomen++;
 					womenInBathroom++;
-					printf("Woman in. Women inside: %d\n", womenInBathroom);
+					totalWomen++;
+					printf("thread: %d. Woman in. Women inside: %d. Men inside: %d\n", omp_get_thread_num(), womenInBathroom, menInBathroom);
 				}
 
 				//Rand time inside
@@ -100,16 +115,7 @@ void ParallelExercise::DoExercise()
 				{
 					//Men go outside
 					womenInBathroom--;
-					printf("Woman out. Time inside: %d. Women inside: %d\n", time, womenInBathroom);
-				}
-
-				////If no men - woman can go inside
-				if (womenInBathroom == 0)
-				{
-#pragma omp critical
-					{
-						omp_unset_lock(&NoWomenInside);
-					}
+					printf("thread: %d. Woman out. Time inside: %d. Women inside: %d\n", omp_get_thread_num(), time, womenInBathroom);
 				}
 			}
 		}

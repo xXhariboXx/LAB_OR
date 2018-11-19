@@ -740,7 +740,7 @@ int main()
 	integral.ParallelThree(result, timeSpent);
 	integral.ParallelFour(result, timeSpent);
 
-	ParallelExercise parallelExercise(7, 5);
+	ParallelExercise parallelExercise(15, 15);
 	parallelExercise.DoExercise();
 
 	system("pause");

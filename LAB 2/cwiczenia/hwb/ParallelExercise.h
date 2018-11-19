@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>   
 #include <windows.h>
-#include <vector>
+#include <deque>
 
 /* Class for executing parallel tasks (exercise number 2)*/
 class ParallelExercise
