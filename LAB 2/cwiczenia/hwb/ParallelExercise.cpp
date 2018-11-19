@@ -61,6 +61,10 @@ void ParallelExercise::DoExercise()
 				//Man go inside bathroom
 #pragma omp critical
 				{
+					if (menInBathroom && womenInBathroom)
+					{
+						int a = 0;
+					}
 					menInBathroom++;
 					totalMen++;
 					printf("thread: %d. Man in. Men inside: %d. Women inside: %d\n", omp_get_thread_num(), menInBathroom, womenInBathroom);
@@ -101,6 +105,10 @@ void ParallelExercise::DoExercise()
 
 #pragma omp critical
 				{
+					if (menInBathroom && womenInBathroom)
+					{
+						int a = 0;
+					}
 					//Man go inside bathroom
 					womenInBathroom++;
 					totalWomen++;
