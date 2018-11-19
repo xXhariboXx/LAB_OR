@@ -16,79 +16,105 @@ ParallelExercise::~ParallelExercise()
 
 void ParallelExercise::DoExercise()
 {
-	omp_lock_t LockMen;
-	omp_lock_t LockWomen;
-	omp_init_lock(&LockMen);
-	omp_init_lock(&LockWomen);
+	omp_lock_t NoWomenInside;
+	omp_lock_t NoMenInside;
+	omp_init_lock(&NoWomenInside);
+	omp_init_lock(&NoMenInside);
+
 	int menInBathroom = 0;
 	int womenInBathroom = 0;
 	int totalMen = 0;
 	int totalWomen = 0;
+	std::vector<bool> IsManVectorQueue;
 
-#pragma omp parallel for num_threads (ThreadsNumber) shared(menInBathroom, womenInBathroom, LockMen, LockWomen)
+#pragma omp parallel for num_threads (ThreadsNumber) default(shared)
 	for (int i = 0; i < MenPopulation + WomenPopulation; i++)
 	{
-		printf("thread: %d\n", omp_get_thread_num());
+		printf("thread: %d. Male: %s\n", omp_get_thread_num(), (i < MenPopulation ? "Yes" : "No"));
 
-		if (i < MenPopulation)
-		{	
-			//Check if man can go inside
-			while (/*!omp_test_lock(&LockMen) ||*/womenInBathroom > 0)
-			{
-			}
-
-			/*omp_set_lock(&LockWomen);*/
-
-			//Man go inside bathroom
-			menInBathroom++;
-			totalMen++;
-			printf("Man in. Men inside: %d\n", menInBathroom);
-
-			//Rand time inside
-			int time = rand() % 100;
-			Sleep(time);
-
-			//Men go outside
-			menInBathroom--;
-			printf("Man out. Time inside: %d. Men inside: %d\n", time, menInBathroom);
-
-			////If no men - woman can go inside
-			//if (menInBathroom == 0)
-			//{
-			//	omp_unset_lock(&LockWomen);
-			//}
-		}
-
-		if (i >= MenPopulation)
+		//#pragma omp critical
 		{
-			//Check if woman can go inside
-			while (/*!omp_test_lock(&LockWomen) || */menInBathroom > 0)
+			if (i < MenPopulation)
 			{
+				//Check if man can go inside
+				if (womenInBathroom > 0)
+				{
+					printf("thread: %d. Man can't go inside\n", omp_get_thread_num());
+					printf("thread: %d. Set_lock NoMenInside\n", omp_get_thread_num());
+					omp_set_lock(&NoWomenInside);
+				}
+
+#pragma omp critical
+				{
+					//Man go inside bathroom
+					menInBathroom++;
+					totalMen++;
+					printf("Man in. Men inside: %d\n", menInBathroom);
+				}
+
+				//Rand time inside
+				int time = rand() % 100;
+				//Sleep(time);
+
+#pragma omp critical
+				{
+					//Men go outside
+					menInBathroom--;
+					printf("Man out. Time inside: %d. Men inside: %d\n", time, menInBathroom);
+				}
+
+				////If no men - woman can go inside
+				if (menInBathroom == 0)
+				{
+#pragma omp critical
+					{
+						omp_unset_lock(&NoMenInside);
+					}
+				}
 			}
 
-			/*omp_set_lock(&LockMen);*/
+			if (i >= MenPopulation)
+			{
 
-			//Man go inside bathroom
-			totalWomen++;
-			womenInBathroom++;
-			printf("Woman in. Women inside: %d\n", womenInBathroom);
+				//Check if woman can go inside
+				if (menInBathroom > 0)
+				{
+					printf("thread: %d. Woman can't go inside\n", omp_get_thread_num());
+					printf("thread: %d. Set_lock NoWomenInside\n", omp_get_thread_num());
+					omp_set_lock(&NoWomenInside);
+				}
 
-			//Rand time inside
-			int time = rand() % 100;
-			Sleep(time);
+#pragma omp critical
+				{
+					//Man go inside bathroom
+					totalWomen++;
+					womenInBathroom++;
+					printf("Woman in. Women inside: %d\n", womenInBathroom);
+				}
 
-			//Men go outside
-			womenInBathroom--;
-			printf("Woman out. Time inside: %d. Women inside: %d\n", time, womenInBathroom);
+				//Rand time inside
+				int time = rand() % 100;
+				Sleep(time);
 
-			////If no men - woman can go inside
-			//if (womenInBathroom == 0)
-			//{
-			//	omp_unset_lock(&LockMen);
-			//}
+#pragma omp critical
+				{
+					//Men go outside
+					womenInBathroom--;
+					printf("Woman out. Time inside: %d. Women inside: %d\n", time, womenInBathroom);
+				}
+
+				////If no men - woman can go inside
+				if (womenInBathroom == 0)
+				{
+#pragma omp critical
+					{
+						omp_unset_lock(&NoWomenInside);
+					}
+				}
+			}
 		}
 	}
 
-	omp_destroy_lock(&LockMen);
-	omp_destroy_lock(&LockWomen);
+	omp_destroy_lock(&NoWomenInside);
+	omp_destroy_lock(&NoMenInside);
 }
