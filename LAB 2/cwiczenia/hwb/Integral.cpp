@@ -70,7 +70,7 @@ void Integral::ParallelOne(double& IntegralResult, double& TimeSpent)
 {
 	clock_t begin, end;
 
-	printf("Calculating integral with using parallel for loop\n");
+	printf("Calculating integral with using parallel for loop with REDUCTION method\n");
 
 	begin = clock();
 	double x, y = 0;
@@ -80,7 +80,7 @@ void Integral::ParallelOne(double& IntegralResult, double& TimeSpent)
 	for (int i = 0; i < n; i++)
 	{
 		x = x_0 + i * step;
-		y += Function(x);
+		y = y + Function(x);
 	}
 
 	IntegralResult = step * y;
@@ -95,13 +95,39 @@ void Integral::ParallelTwo(double& IntegralResult, double& TimeSpent)
 {
 	clock_t begin, end;
 
-	printf("Calculating integral with using critical sections\n");
+	printf("Calculating integral with using parallel for loop with ATOMIC operations\n");
 
 	begin = clock();
 	double x, y = 0;
 	double step = (x_k - x_0) / (double)n;
 
-#pragma omp parallel for num_threads (ThreadsNumber)
+#pragma omp parallel for private(x) num_threads (ThreadsNumber)
+	for (int i = 0; i < n; i++)
+	{
+		x = x_0 + i * step;
+#pragma omp atomic
+		y += Function(x);
+	}
+
+	IntegralResult = step * y;
+	end = clock();
+	TimeSpent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+	PrintTime(TimeSpent);
+	PrintIntegralValue(IntegralResult);
+}
+
+void Integral::ParallelThree(double& IntegralResult, double& TimeSpent)
+{
+	clock_t begin, end;
+
+	printf("Calculating integral with using CRITICAL sections\n");
+
+	begin = clock();
+	double x, y = 0;
+	double step = (x_k - x_0) / (double)n;
+
+#pragma omp parallel for num_threads (ThreadsNumber) private(x)
 	for (int i = 0; i < n; i++)
 	{
 #pragma omp critical
@@ -119,20 +145,20 @@ void Integral::ParallelTwo(double& IntegralResult, double& TimeSpent)
 	PrintIntegralValue(IntegralResult);
 }
 
-void Integral::ParallelThree(double& IntegralResult, double& TimeSpent)
+void Integral::ParallelFour(double& IntegralResult, double& TimeSpent)
 {
 	clock_t begin, end;
 
 	omp_lock_t lock;
 	omp_init_lock(&lock);
 
-	printf(" Calculating integral with using locks\n");
+	printf(" Calculating integral with using LOCKS\n");
 
 	begin = clock();
 	double x, y = 0;
 	double step = (x_k - x_0) / (double)n;
 
-#pragma omp parallel for num_threads (ThreadsNumber)
+#pragma omp parallel for num_threads (ThreadsNumber) private(x)
 	for (int i = 0; i < n; i++)
 	{
 		if (!omp_test_lock(&lock)) {
@@ -140,7 +166,7 @@ void Integral::ParallelThree(double& IntegralResult, double& TimeSpent)
 		}
 
 		x = x_0 + i * step;
-		y += Function(x);
+		y = y + Function(x);
 
 		omp_unset_lock(&lock);
 	}
@@ -154,28 +180,3 @@ void Integral::ParallelThree(double& IntegralResult, double& TimeSpent)
 	PrintIntegralValue(IntegralResult);
 }
 
-void Integral::ParallelFour(double& IntegralResult, double& TimeSpent)
-{
-	clock_t begin, end;
-	double time_spent;
-
-	printf("Calculating integral with using shedule\n");
-
-	begin = clock();
-	double x, y = 0;
-	double step = (x_k - x_0) / (double)n;
-
-#pragma omp for schedule (static, ThreadsNumber)
-	for (int i = 0; i < n; i++)
-	{
-		x = x_0 + i * step;
-		y += Function(x);
-	}
-
-	IntegralResult = step * y;
-	end = clock();
-	TimeSpent = (double)(end - begin) / CLOCKS_PER_SEC;
-
-	PrintTime(TimeSpent);
-	PrintIntegralValue(IntegralResult);
-}
